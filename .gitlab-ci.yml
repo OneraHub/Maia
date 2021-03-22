@@ -41,6 +41,7 @@ job:build:
 job:test:
   variables:
     GIT_SUBMODULE_STRATEGY: none
+    SCHEDULER_PARAMETERS:  "--qos=c1_inter_giga --ntasks=8 --time=00:30:00"
   stage: test
   script:
     - cd build
@@ -51,6 +52,8 @@ job:test:
     - coverage xml --rcfile=.coveragerc_unit_tests -o coverage_unit_tests.xml
     - sed 's@'"$CI_PROJECT_DIR"'/@@' -i coverage_unit_tests.xml
   when: on_success # s'exécutera uniquement si le job `job:build` passe
+  tags: 
+    - slurm
   cache:
     paths:
       - build
