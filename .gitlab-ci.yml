@@ -27,6 +27,8 @@ stages:
 job:build:
   variables:
     GIT_SUBMODULE_STRATEGY: normal
+  tags:
+    - jacamar
   stage: build
   script:
     - mkdir build && cd build
