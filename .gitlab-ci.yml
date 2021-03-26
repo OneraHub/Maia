@@ -40,13 +40,11 @@ job:build:
 #todo : display reports on browser eg with gitlab pages
 job:test:
   variables:
-    GIT_SUBMODULE_STRATEGY: normal
+    GIT_SUBMODULE_STRATEGY: none
     SCHEDULER_PARAMETERS:  "--qos=c1_inter_giga --ntasks=8 --time=00:30:00"
   stage: test
   script:
-    - mkdir build && cd build
-    - cmake -DCMAKE_BUILD_TYPE=Debug -DMAIA_ENABLE_MPI_TESTS=ON -Dmaia_ENABLE_COVERAGE=ON -DPYBIND11_INSTALL=ON -DMAIA_USE_PDM_INSTALL=ON -Dpdm_DIR=$PARADIGM_HOME/lib/cmake ../
-    - make -j8
+    - cd build
     - make test
     - cd test
     - coverage combine --rcfile=.coveragerc_unit_tests
@@ -56,10 +54,10 @@ job:test:
   when: on_success # s'exécutera uniquement si le job `job:build` passe
   tags: 
     - slurm
-  #cache:
-    #paths:
-      #- build
-    #policy: pull # récupération du cache
+  cache:
+    paths:
+      - build
+    policy: pull # récupération du cache
   artifacts:
     paths:
       - ./build/test/reports/*
