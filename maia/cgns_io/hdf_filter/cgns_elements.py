@@ -100,13 +100,11 @@ def create_zone_eso_elements_filter(elmt, zone_path, hdf_filter, mode):
     hdf_filter[ec_path] = partial(load_element_connectivity_from_eso, elmt, zone_path)
 
 
-def create_zone_mixed_elements_filter(elmt, zone_path, hdf_filter):
+def create_zone_mixed_elements_filter(elmt, zone_path, hdf_filter, mode):
   """
+  New norm of MIXED is the same pattern of loed of ngon/nface
   """
-  # distrib_elmt = I.getVal(IE.getDistribution(elmt, 'Element'))
-  # dn_elmt      = distrib_elmt[1] - distrib_elmt[0]
-
-  raise NotImplementedError("Mixed elements are not allowed ")
+  create_zone_eso_elements_filter(elmt, zone_path, hdf_filter, mode)
 
 
 def create_zone_std_elements_filter(elmt, zone_path, hdf_filter):
@@ -142,7 +140,7 @@ def create_zone_elements_filter(zone_tree, zone_path, hdf_filter, mode):
     if(elmt[1][0] == 22) or (elmt[1][0] == 23):
       create_zone_eso_elements_filter(elmt, zone_path, hdf_filter, mode)
     elif(elmt[1][0] == 20):
-      create_zone_mixed_elements_filter(elmt, zone_path, hdf_filter)
+      create_zone_mixed_elements_filter(elmt, zone_path, hdf_filter, mode)
     else:
       create_zone_std_elements_filter(elmt, zone_path, hdf_filter)
 
