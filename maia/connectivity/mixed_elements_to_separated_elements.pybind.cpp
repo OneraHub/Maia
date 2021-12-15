@@ -3,6 +3,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include "cpp_cgns/sids/elements_utils.hpp"
+#include "maia/utils/mpi4py.hpp"
 
 namespace py = pybind11;
 
@@ -125,6 +126,12 @@ idx_from_count(py::array_t<g_num  , py::array::f_style>& np_count){
 }
 
 
+template<typename g_num>
+void
+redistribute_mixed_to_separated(py::object mpi4py_obj)
+{
+  auto comm = maia::mpi4py_comm_to_comm(mpi4py_obj);
+}
 
 PYBIND11_MODULE(mixed_elements_to_separated_elements, m) {
   m.doc() = "pybind11 connectivity_transform plugin"; // optional module docstring
@@ -173,5 +180,10 @@ PYBIND11_MODULE(mixed_elements_to_separated_elements, m) {
         py::arg("np_count").noconvert());
   m.def("idx_from_count", &idx_from_count<int64_t>,
         py::arg("np_count").noconvert());
+
+  m.def("redistribute_mixed_to_separated", &redistribute_mixed_to_separated<int32_t>,
+        py::arg("mpi4py_obj").noconvert());
+  m.def("redistribute_mixed_to_separated", &redistribute_mixed_to_separated<int64_t>,
+        py::arg("mpi4py_obj").noconvert());
 }
 

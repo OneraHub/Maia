@@ -6,7 +6,7 @@ import maia.sids.Internal_ext as IE
 
 from maia.sids.elements_utils import elements_properties
 from maia import npy_pdm_gnum_dtype as pdm_dtype
-from cmaia.connectivity.mixed_elements_to_separated_elements import count_type_in_mixed_elements, sort_by_type, idx_from_count
+from cmaia.connectivity.mixed_elements_to_separated_elements import count_type_in_mixed_elements, sort_by_type, idx_from_count, redistribute_mixed_to_separated
 
 def mixed_elements_to_separated_elements_zone(dist_zone, dist_zone_mixed, comm):
   """
@@ -79,6 +79,8 @@ def mixed_elements_to_separated_elements_zone(dist_zone, dist_zone_mixed, comm):
   print("concat_elmt_vtx   : ", concat_elmt_vtx)
   print("concat_elmt_vtx_n : ", concat_elmt_vtx_n)
   print("dnew_to_old       : ", dnew_to_old)
+
+  # redistribute_mixed_to_separated(count_by_type, count_by_type_idx,)
 
 
 def mixed_elements_to_separated_elements(dist_tree, comm):
