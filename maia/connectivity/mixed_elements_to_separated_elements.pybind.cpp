@@ -4,6 +4,8 @@
 #include <pybind11/numpy.h>
 #include "cpp_cgns/sids/elements_utils.hpp"
 #include "maia/utils/mpi4py.hpp"
+#include "pdm_block_to_part.h"
+#include "pdm_distrib.h"
 
 namespace py = pybind11;
 
@@ -127,10 +129,114 @@ idx_from_count(py::array_t<g_num  , py::array::f_style>& np_count){
 
 
 template<typename g_num>
-void
-redistribute_mixed_to_separated(py::object mpi4py_obj)
+py::list
+redistribute_mixed_to_separated(py::object mpi4py_obj,
+                                py::array_t<g_num  , py::array::f_style>& np_count_by_type,
+                                py::array_t<g_num  , py::array::f_style>& np_count_by_type_idx,
+                                py::array_t<g_num  , py::array::f_style>& np_count_elmt_vtx_n_by_type,
+                                py::array_t<g_num  , py::array::f_style>& np_count_elmt_vtx_n_by_type_idx,
+                                py::array_t<g_num  , py::array::f_style>& np_g_count_by_type,
+                                py::array_t<g_num  , py::array::f_style>& np_new_to_old,
+                                py::array_t<int32_t, py::array::f_style>& np_elmt_connectivity_n,
+                                py::array_t<g_num  , py::array::f_style>& np_elmt_connectivity)
 {
   auto comm = maia::mpi4py_comm_to_comm(mpi4py_obj);
+
+  // We have a unique array that contains by stride the local elements sort by elements
+  // We see it as partition
+  auto count_by_type                = make_raw_view(np_count_by_type               );
+  auto count_by_type_idx            = make_raw_view(np_count_by_type_idx           );
+  auto count_elmt_vtx_n_by_type     = make_raw_view(np_count_elmt_vtx_n_by_type    );
+  auto count_elmt_vtx_n_by_type_idx = make_raw_view(np_count_elmt_vtx_n_by_type_idx);
+  auto g_count_by_type              = make_raw_view(np_g_count_by_type             );
+  auto new_to_old                   = make_raw_view(np_new_to_old                  );
+  auto elmt_connectivity_n          = make_raw_view(np_elmt_connectivity_n         );
+  auto elmt_connectivity            = make_raw_view(np_elmt_connectivity           );
+
+  int n_elemt_kind = np_count_by_type.size();
+  // std::vector<PDM_g_num_t*> part_elemts  (n_elemt_kind);
+  // std::vector<int        *> part_elemts_n(n_elemt_kind);
+  // std::vector<int>          n_elmt(n_elemt_kind);
+
+  // // Generate partition
+  // for(int i = 0; i < n_elemt_kind; ++i) {
+  //   int beg          = count_by_type_idx[i];
+  //   int beg_elmt_vtx = count_elmt_vtx_n_by_type_idx[i];
+  //   part_elemts_n[i] = &elmt_connectivity_n[beg];
+  //   part_elemts  [i] = &elmt_connectivity  [beg_elmt_vtx];
+  // }
+
+  PDM_MPI_Comm pdm_comm = PDM_MPI_mpi_2_pdm_mpi_comm(&comm);
+  int i_rank;
+  int n_rank;
+
+  PDM_MPI_Comm_rank(pdm_comm, &i_rank);
+  PDM_MPI_Comm_size(pdm_comm, &n_rank);
+
+  int dn_elemt_in = count_by_type_idx[n_elemt_kind];
+  PDM_g_num_t* distrib_init = PDM_compute_entity_distribution(pdm_comm, dn_elemt_in);
+
+  PDM_g_num_t **pelemts_g_num = (PDM_g_num_t **) malloc(n_elemt_kind * sizeof(PDM_g_num_t *));
+  int          *n_elemts      = (int          *) malloc(n_elemt_kind * sizeof(int          ));
+  for(int i_kind = 0; i_kind < n_elemt_kind; ++i_kind) {
+    PDM_g_num_t* distrib_elmt = PDM_compute_uniform_entity_distribution(pdm_comm, g_count_by_type[i_kind]);
+    n_elemts[i_kind]          = distrib_elmt[i_rank+1] - distrib_elmt[i_rank];
+
+    pelemts_g_num[i_kind] = (PDM_g_num_t *) malloc( n_elemts[i_kind] * sizeof(PDM_g_num_t));
+
+    for(int i = 0; i < n_elemts[i_kind]; ++i) {
+      pelemts_g_num[i_kind][i] = distrib_elmt[i_rank] + i + 1;
+    }
+
+    free(distrib_elmt);
+  }
+
+
+  //
+  // PDM_g_num_t
+  PDM_block_to_part_t* btp = PDM_block_to_part_create(distrib_init,
+                              (const PDM_g_num_t **)  pelemts_g_num,
+                                                      n_elemts,
+                                                      n_elemt_kind,
+                                                      pdm_comm);
+
+  int         **section_elmt_n = NULL;
+  PDM_g_num_t **section_elmt   = NULL;
+  PDM_block_to_part_exch2(btp,
+                          sizeof(PDM_g_num_t),
+                          PDM_STRIDE_VAR,
+                          elmt_connectivity_n,
+             (void *  )   elmt_connectivity,
+             (int  ***)  &section_elmt_n,
+             (void ***)  &section_elmt);
+
+  py::list sections_list;
+  for(int i_kind = 0; i_kind < n_elemt_kind; ++i_kind) {
+    free(pelemts_g_num[i_kind]);
+
+    int n_vtx_tot = 0;
+    for(int i = 0; i < n_elemts[i_kind]; ++i) {
+      n_vtx_tot += section_elmt_n[i_kind][i];
+    }
+    // int n_vtx = cgns::number_of_nodes(static_cast<int>(i_type));
+    // assert(n_vtx_tot == n_elemts[i_kind] * n_vtx)
+
+    py::capsule capsule(section_elmt[i_kind], free);
+    py::array_t<PDM_g_num_t> np_section_elmt_vtx({n_vtx_tot}, section_elmt[i_kind], capsule);
+
+    sections_list.append(np_section_elmt_vtx);
+
+    free(section_elmt_n[i_kind]);
+    // free(section_elmt[i_kind]);
+  }
+  free(pelemts_g_num);
+
+  free(distrib_init);
+  free(n_elemts);
+
+  PDM_block_to_part_free(btp);
+
+  return sections_list;
 }
 
 PYBIND11_MODULE(mixed_elements_to_separated_elements, m) {
@@ -181,9 +287,24 @@ PYBIND11_MODULE(mixed_elements_to_separated_elements, m) {
   m.def("idx_from_count", &idx_from_count<int64_t>,
         py::arg("np_count").noconvert());
 
-  m.def("redistribute_mixed_to_separated", &redistribute_mixed_to_separated<int32_t>,
-        py::arg("mpi4py_obj").noconvert());
-  m.def("redistribute_mixed_to_separated", &redistribute_mixed_to_separated<int64_t>,
-        py::arg("mpi4py_obj").noconvert());
+  m.def("redistribute_mixed_to_separated", &redistribute_mixed_to_separated<PDM_g_num_t>,
+        py::arg("mpi4py_obj"                     ).noconvert(),
+        py::arg("np_count_by_type"               ).noconvert(),
+        py::arg("np_count_by_type_idx"           ).noconvert(),
+        py::arg("np_count_elmt_vtx_n_by_type"    ).noconvert(),
+        py::arg("np_count_elmt_vtx_n_by_type_idx").noconvert(),
+        py::arg("np_g_count_by_type"             ).noconvert(),
+        py::arg("np_new_to_old"                  ).noconvert(),
+        py::arg("np_elmt_connectivity_n"         ).noconvert(),
+        py::arg("np_elmt_connectivity"           ).noconvert());
+  // m.def("redistribute_mixed_to_separated", &redistribute_mixed_to_separated<int64_t>,
+  //       py::arg("mpi4py_obj"                     ).noconvert(),
+  //       py::arg("np_count_by_type"               ).noconvert(),
+  //       py::arg("np_count_by_type_idx"           ).noconvert(),
+  //       py::arg("np_count_elmt_vtx_n_by_type"    ).noconvert(),
+  //       py::arg("np_count_elmt_vtx_n_by_type_idx").noconvert(),
+  //       py::arg("np_new_to_old"                  ).noconvert(),
+  //       py::arg("np_elmt_connectivity_n"         ).noconvert(),
+  //       py::arg("np_elmt_connectivity"           ).noconvert());
 }
 

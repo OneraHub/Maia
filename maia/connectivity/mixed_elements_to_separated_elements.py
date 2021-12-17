@@ -80,8 +80,16 @@ def mixed_elements_to_separated_elements_zone(dist_zone, dist_zone_mixed, comm):
   print("concat_elmt_vtx_n : ", concat_elmt_vtx_n)
   print("dnew_to_old       : ", dnew_to_old)
 
-  # redistribute_mixed_to_separated(count_by_type, count_by_type_idx,)
+  separated_section = redistribute_mixed_to_separated(comm,
+                                                      count_by_type, count_by_type_idx,
+                                                      count_elmt_vtx_n_by_type, count_elmt_vtx_n_by_type_idx,
+                                                      g_count_by_type,
+                                                      dnew_to_old,
+                                                      concat_elmt_vtx_n,
+                                                      concat_elmt_vtx)
 
+  for section in separated_section:
+    print("separated_section : ", section)
 
 def mixed_elements_to_separated_elements(dist_tree, comm):
   """
