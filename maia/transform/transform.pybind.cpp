@@ -46,6 +46,7 @@ const auto std_elements_to_ngons                    = apply_cpp_cgns_par_functio
 const auto convert_zone_to_std_elements = apply_cpp_cgns_function_to_py_base(maia::convert_zone_to_std_elements);
 const auto gcs_only_for_ghosts          = apply_cpp_cgns_function_to_py_base(cgns::gcs_only_for_ghosts);
 const auto ngon_new_to_old              = apply_cpp_cgns_function_to_py_base(maia::ngon_new_to_old);
+const auto add_nfaces                   = apply_cpp_cgns_par_function_to_py_base(maia::add_nfaces);
 
 
 
@@ -63,8 +64,9 @@ PYBIND11_MODULE(transform, m) {
   m.def("ngon_new_to_old"                         , ngon_new_to_old                         , "Turn Ngon description with ElementStartOffset to old convension");
   m.def("generate_interior_faces_and_parents"     , generate_interior_faces_and_parents     , "Generate TRI_3_interior and QUAD_4_interior element sections, and adds ParentElement to interior and exterior faces");
   m.def("std_elements_to_ngons"                   , std_elements_to_ngons                   , "Convert to NGon");
+  m.def("add_nfaces"                              , add_nfaces                              , "Create NFace section from NGon's ParentElements section");
 }
-#else // C++==17
+#else // if C++==17
 
 #include <pybind11/pybind11.h>
 namespace py = pybind11;
@@ -72,6 +74,6 @@ namespace py = pybind11;
 PYBIND11_MODULE(transform, m) {
   m.doc() = "C++ maia functions wrapped by pybind";
   m.attr("cpp20_enabled") = py::bool_(0);
-
 }
+
 #endif // C++>17

@@ -78,12 +78,10 @@ concatenate_into_poly_section(const cgns::tree_range& section_nodes, ElementType
   emplace_child(ngon_section_node,std::move(eso_node));
 
   // distribution
-  tree distri_node        = new_DataArray("Element"            ,full_to_partial_distribution(distri_cat       ,comm));
-  tree distri_connec_node = new_DataArray("ElementConnectivity",full_to_partial_distribution(connec_distri_cat,comm));
+  auto partial_distri        = full_to_partial_distribution(distri_cat       ,comm);
+  auto partial_distri_connec = full_to_partial_distribution(connec_distri_cat,comm);
 
-  auto distri_section_node = new_UserDefinedData(":CGNS#Distribution");
-  emplace_child(distri_section_node,std::move(distri_node));
-  emplace_child(distri_section_node,std::move(distri_connec_node));
+  auto distri_section_node = cgns::new_ElementDistribution(std::move(partial_distri),std::move(partial_distri_connec));
   emplace_child(ngon_section_node,std::move(distri_section_node));
 
   return std::make_pair(std::move(distri_cat),std::move(ngon_section_node));

@@ -35,3 +35,6 @@ def generate_interior_faces_and_parents(t,comm):
 
 def std_elements_to_ngons(t,comm):
   apply_to_zones(t,ctransform.std_elements_to_ngons,comm)
+
+def add_nfaces(t,comm):
+  apply_to_zones(t,ctransform.add_nfaces,comm)

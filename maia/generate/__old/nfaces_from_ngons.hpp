@@ -1,14 +1,15 @@
 #pragma once
 
 
-namespace cgns {
+#include "mpi.h"
+namespace cgns { struct tree; } // Fwd decl
 
-// Fwd decl
-struct tree;
+
+namespace maia {
 
 
 auto
-add_nfaces(tree& b) -> void;
+add_nfaces(cgns::tree& z, MPI_Comm comm) -> void;
 
 
-} // cgns
+} // maia
