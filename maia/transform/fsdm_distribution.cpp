@@ -93,14 +93,25 @@ distribute_bc_ids_to_match_face_dist(tree& b, MPI_Comm comm) -> void {
 
     for (tree& bc : cgns::get_nodes_by_matching(z,"ZoneBC/BC_t")) {
       auto pl = cgns::PointList<I4>(bc);
-      auto fields = std::vector<std::vector<double>>{}; // TODO extract these fields (if they exist)
-      auto [new_pl,_] = redistribute_to_match_face_dist(elt_dists,elt_intervals,pl,fields,comm);
 
-      rm_child_by_name(bc,"PointList");
+      auto field_nodes = cgns::get_nodes_by_matching(bc,"BCDataSet_t/BCData_t/DataArray_t");
+      int n_fields = field_nodes.size();
+      std::vector<std_e::span<R8>> fields(n_fields);
+      for (int i=0; i<n_fields; ++i) {
+        fields[i] = cgns::view_as_span<R8>(value(field_nodes[i]));
+      }
 
-      cgns::emplace_child(bc,new_PointList("PointList",std::move(new_pl)));
+      auto [new_dist,new_pl,new_fields] = redistribute_to_match_face_dist(elt_dists,elt_intervals,pl,fields,comm);
+
+      std::vector<I8> dims = {1,(I8)new_pl.size()}; // required by SIDS (9.3: BC_t)
+      node_value new_pl_value(std::move(new_pl),std::move(dims));
+      value(cgns::get_node_by_name(bc,"PointList")) = std::move(new_pl_value);
+      value(cgns::get_node_by_name(bc,":CGNS#Distribution")) = std::move(new_dist);
+
+      for (int i=0; i<n_fields; ++i) {
+        value(field_nodes[i]) = std::move(new_fields[i]);
+      }
     }
-    // TODO update BC distribution
   }
 }
 

@@ -60,9 +60,10 @@ _add_nfaces(tree& z, MPI_Comm comm) -> void {
 
 auto
 add_nfaces(tree& z, MPI_Comm comm) -> void {
-  if (value(z).data_type()=="I4") return _add_nfaces<I4>(z,comm);
-  if (value(z).data_type()=="I8") return _add_nfaces<I8>(z,comm);
-  throw cgns::cgns_exception("Zone "+name(z)+" has a value of data type "+value(z).data_type()+" but it should be I4 or I8");
+  return _add_nfaces<I4>(z,comm);
+  //if (value(z).data_type()=="I4") return _add_nfaces<I4>(z,comm);
+  //if (value(z).data_type()=="I8") return _add_nfaces<I8>(z,comm);
+  //throw cgns::cgns_exception("Zone "+name(z)+" has a value of data type "+value(z).data_type()+" but it should be I4 or I8");
 }
 
 
