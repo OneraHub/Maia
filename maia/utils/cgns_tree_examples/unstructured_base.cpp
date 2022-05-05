@@ -4,7 +4,7 @@
 #include "maia/generate/__old/from_structured_grid.hpp"
 
 // TODO move {
-#include "range/v3/view/concat.hpp"
+#include "std_e/future/ranges/concat.hpp"
 #include "range/v3/view/join.hpp"
 #include "std_e/algorithm/iota.hpp"
 
@@ -131,7 +131,7 @@ create_Zone0() -> tree {
   auto k_faces_l_parent_elements = std_e::ranges::repeat(42,nb_k_faces);
   auto k_faces_r_parent_elements = std_e::ranges::repeat(42,nb_k_faces);
 
-  auto parent_elements = ranges::views::concat(
+  auto parent_elements = std_e::views::concat(
     i_faces_l_parent_elements , j_faces_l_parent_elements, k_faces_l_parent_elements,
     i_faces_r_parent_elements , j_faces_r_parent_elements, k_faces_r_parent_elements
   ) | std_e::to_vector();
